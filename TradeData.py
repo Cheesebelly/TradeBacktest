@@ -57,10 +57,13 @@ def calculate_statistics(trades):
     stats = {
         "wins": 0,
         "losses": 0,
+        "break_even": 0,
         "confluence_wins": {},
         "confluence_losses": {},
+        "confluence_break_even": {},
         "map_wins": {},
         "map_losses": {},
+        "map_break_even": {},
         "bias_correct": 0,
         "bias_incorrect": 0
     }
@@ -71,11 +74,16 @@ def calculate_statistics(trades):
             for conf in trade["confluences"]:
                 stats["confluence_wins"][conf] = stats["confluence_wins"].get(conf, 0) + 1
             stats["map_wins"][trade["map_color"]] = stats["map_wins"].get(trade["map_color"], 0) + 1
-        else:
+        elif trade["result"] == "loss":
             stats["losses"] += 1
             for conf in trade["confluences"]:
                 stats["confluence_losses"][conf] = stats["confluence_losses"].get(conf, 0) + 1
             stats["map_losses"][trade["map_color"]] = stats["map_losses"].get(trade["map_color"], 0) + 1
+        else:
+            stats["break_even"] += 1
+            for conf in trade["confluences"]:
+                stats["confluence_break_even"][conf] = stats["confluence_break_even"].get(conf, 0) + 1
+            stats["map_break_even"][trade["map_color"]] = stats["map_break_even"].get(trade["map_color"], 0) + 1
         
         if trade["bias_followed"]:
             stats["bias_correct"] += 1
@@ -99,100 +107,47 @@ def plot_statistics():
 
     plt.figure(figsize=(15, 10))
 
-    # Win/Loss total
+    # Win/Loss/Break Even total
     plt.subplot(2, 2, 1)
-    plt.bar(["Wins", "Losses"], [total_stats["wins"], total_stats["losses"]], color=['green', 'red'])
-    plt.title("Total Wins vs Losses")
+    plt.bar(["Wins", "Losses", "Break Even"], [total_stats["wins"], total_stats["losses"], total_stats["break_even"]], color=['#4CAF50', '#F44336', '#2196F3'])
+    plt.title("Total Wins vs Losses vs Break Even")
 
-    # Confluences Win/Loss
+    # Confluences Win/Loss/Break Even
     plt.subplot(2, 2, 2)
-    all_confs = list(set(total_stats["confluence_wins"].keys()).union(total_stats["confluence_losses"].keys()))
+    all_confs = list(set(total_stats["confluence_wins"].keys()).union(total_stats["confluence_losses"].keys()).union(total_stats["confluence_break_even"].keys()))
     wins = [total_stats["confluence_wins"].get(c, 0) for c in all_confs]
     losses = [total_stats["confluence_losses"].get(c, 0) for c in all_confs]
-    bar_width = 0.35
+    break_even = [total_stats["confluence_break_even"].get(c, 0) for c in all_confs]
+    bar_width = 0.25
     x = range(len(all_confs))
-    plt.bar(x, wins, width=bar_width, color='green', label='Wins')
-    plt.bar([i + bar_width for i in x], losses, width=bar_width, color='red', label='Losses')
-    plt.xticks([i + bar_width/2 for i in x], all_confs, rotation=45)
-    plt.title("Confluence Wins/Losses")
+    plt.bar(x, wins, width=bar_width, color='#4CAF50', label='Wins')
+    plt.bar([i + bar_width for i in x], losses, width=bar_width, color='#F44336', label='Losses')
+    plt.bar([i + 2 * bar_width for i in x], break_even, width=bar_width, color='#2196F3', label='Break Even')
+    plt.xticks([i + bar_width for i in x], all_confs, rotation=45)
+    plt.title("Confluence Wins/Losses/Break Even")
     plt.legend()
 
-    # Map Win/Loss
+    # Map Win/Loss/Break Even
     plt.subplot(2, 2, 3)
-    all_maps = list(set(total_stats["map_wins"].keys()).union(total_stats["map_losses"].keys()))
+    all_maps = list(set(total_stats["map_wins"].keys()).union(total_stats["map_losses"].keys()).union(total_stats["map_break_even"].keys()))
     map_win_counts = [total_stats["map_wins"].get(m, 0) for m in all_maps]
     map_loss_counts = [total_stats["map_losses"].get(m, 0) for m in all_maps]
+    map_break_even_counts = [total_stats["map_break_even"].get(m, 0) for m in all_maps]
     x = range(len(all_maps))
-    plt.bar(x, map_win_counts, width=bar_width, color='green', label='Wins')
-    plt.bar([i + bar_width for i in x], map_loss_counts, width=bar_width, color='red', label='Losses')
-    plt.xticks([i + bar_width/2 for i in x], all_maps)
-    plt.title("Map Colors Wins/Losses")
+    plt.bar(x, map_win_counts, width=bar_width, color='#4CAF50', label='Wins')
+    plt.bar([i + bar_width for i in x], map_loss_counts, width=bar_width, color='#F44336', label='Losses')
+    plt.bar([i + 2 * bar_width for i in x], map_break_even_counts, width=bar_width, color='#2196F3', label='Break Even')
+    plt.xticks([i + bar_width for i in x], all_maps)
+    plt.title("Map Colors Wins/Losses/Break Even")
     plt.legend()
 
     # Bias info
     plt.subplot(2, 2, 4)
-    plt.bar(["Bias Correct", "Bias Incorrect"], [total_stats["bias_correct"], total_stats["bias_incorrect"]], color=['blue', 'orange'])
+    plt.bar(["Bias Correct", "Bias Incorrect"], [total_stats["bias_correct"], total_stats["bias_incorrect"]], color=['#2196F3', '#FF9800'])
     plt.title("Bias Followed vs Not Followed")
 
     plt.tight_layout()
     plt.show()
-
-def plot_statistics_per_pair():
-    if not trades_data:
-        messagebox.showwarning("No data", "No trades available!")
-        return
-    
-    for pair, trades in trades_data.items():
-        stats = calculate_statistics(trades)
-
-        plt.figure(figsize=(12, 8))
-        plt.suptitle(f"Statistics for {pair}")
-
-        # Win/Loss per pair
-        plt.subplot(2, 2, 1)
-        plt.bar(["Wins", "Losses"], [stats["wins"], stats["losses"]], color=['green', 'red'])
-        plt.title("Wins vs Losses")
-
-        # Confluences
-        plt.subplot(2, 2, 2)
-        all_confs = list(set(stats["confluence_wins"].keys()).union(stats["confluence_losses"].keys()))
-        wins_c = [stats["confluence_wins"].get(c, 0) for c in all_confs]
-        losses_c = [stats["confluence_losses"].get(c, 0) for c in all_confs]
-        bar_width = 0.35
-        x = range(len(all_confs))
-        plt.bar(x, wins_c, width=bar_width, color='green', label='Wins')
-        plt.bar([i + bar_width for i in x], losses_c, width=bar_width, color='red', label='Losses')
-        plt.xticks([i + bar_width/2 for i in x], all_confs, rotation=45)
-        plt.title("Confluences")
-        plt.legend()
-
-        # Map colors
-        plt.subplot(2, 2, 3)
-        all_maps = list(set(stats["map_wins"].keys()).union(stats["map_losses"].keys()))
-        map_win_counts = [stats["map_wins"].get(m, 0) for m in all_maps]
-        map_loss_counts = [stats["map_losses"].get(m, 0) for m in all_maps]
-        x = range(len(all_maps))
-        plt.bar(x, map_win_counts, width=bar_width, color='green', label='Wins')
-        plt.bar([i + bar_width for i in x], map_loss_counts, width=bar_width, color='red', label='Losses')
-        plt.xticks([i + bar_width/2 for i in x], all_maps)
-        plt.title("Map Colors")
-        plt.legend()
-
-        # Bias info as text
-        plt.subplot(2, 2, 4)
-        plt.bar(["Bias Correct", "Bias Incorrect"], [stats["bias_correct"], stats["bias_incorrect"]], color=['blue', 'orange'])
-        plt.title("Bias Followed vs Not Followed")
-
-        plt.tight_layout(rect=[0, 0, 1, 0.95])  # space for title
-        plt.show()
-
-def reset_data():
-    global trades_data
-    if messagebox.askyesno("Confirm", "Are you sure you want to delete all data?"):
-        trades_data = {}
-        save_data()
-        update_pair_list()
-        messagebox.showinfo("Success", "All data has been deleted!")
 
 def view_trades_gui():
     selected_pair = pair_var.get()
@@ -218,22 +173,32 @@ def view_trades_gui():
             view_window.destroy()
             view_trades_gui()
         
-        tk.Button(view_window, text="Delete", command=delete_trade).pack()
+        tk.Button(view_window, text="Delete", command=delete_trade, bg="#F44336", fg="white").pack(pady=2)
 
 def refresh_program():
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
+def reset_data():
+    global trades_data
+    if messagebox.askyesno("Confirm", "Are you sure you want to delete all data?"):
+        trades_data = {}
+        save_data()
+        update_pair_list()
+        messagebox.showinfo("Success", "All data has been deleted!")
+
 # GUI setup
 load_data()
 root = tk.Tk()
 root.title("Trade Logger")
+root.geometry("600x600")
+root.configure(bg="#2E3B4E")  # Dark grey-blue background
 
 # Pair selection
-pair_frame = tk.Frame(root)
+pair_frame = tk.Frame(root, bg="#2E3B4E")
 pair_frame.pack(pady=10)
 
-tk.Label(pair_frame, text="Select Pair:").pack(side=tk.LEFT)
+tk.Label(pair_frame, text="Select Pair:", bg="#2E3B4E", fg="white").pack(side=tk.LEFT)
 pair_var = tk.StringVar()
 pair_dropdown = ttk.Combobox(pair_frame, textvariable=pair_var, values=list(trades_data.keys()))
 pair_dropdown.pack(side=tk.LEFT, padx=5)
@@ -242,47 +207,47 @@ def update_pair_list():
     pair_dropdown['values'] = list(trades_data.keys())
 
 # Add pair button
-tk.Button(root, text="Add Pair", command=add_pair_gui).pack()
+tk.Button(root, text="Add Pair", command=add_pair_gui, bg="#007BFF", fg="white").pack(pady=5)  # Blue button
 
 # Add trade form
-trade_frame = tk.Frame(root)
+trade_frame = tk.Frame(root, bg="#2E3B4E")
 trade_frame.pack(pady=10)
 
-tk.Label(trade_frame, text="Result (win/loss):").grid(row=0, column=0, sticky='w')
+tk.Label(trade_frame, text="Result (win/loss/break even):", bg="#2E3B4E", fg="white").grid(row=0, column=0, sticky='w')
 result_var = tk.StringVar(value="win")
-ttk.Combobox(trade_frame, textvariable=result_var, values=["win", "loss"]).grid(row=0, column=1)
+ttk.Combobox(trade_frame, textvariable=result_var, values=["win", "loss", "break even"]).grid(row=0, column=1)
 
-tk.Label(trade_frame, text="Confluences (comma separated):").grid(row=1, column=0, sticky='w')
+tk.Label(trade_frame, text="Confluences (comma separated):", bg="#2E3B4E", fg="white").grid(row=1, column=0, sticky='w')
 conf_entry = tk.Entry(trade_frame, width=30)
 conf_entry.grid(row=1, column=1)
 
-tk.Label(trade_frame, text="Bias followed?").grid(row=2, column=0, sticky='w')
+tk.Label(trade_frame, text="Bias followed?", bg="#2E3B4E", fg="white").grid(row=2, column=0, sticky='w')
 bias_var = tk.StringVar(value="Yes")
 ttk.Combobox(trade_frame, textvariable=bias_var, values=["Yes", "No"]).grid(row=2, column=1)
 
-tk.Label(trade_frame, text="Map color:").grid(row=3, column=0, sticky='w')
+tk.Label(trade_frame, text="Map color:", bg="#2E3B4E", fg="white").grid(row=3, column=0, sticky='w')
 map_var = tk.StringVar(value="none")
 ttk.Combobox(trade_frame, textvariable=map_var, values=["red", "orange", "gray", "none"]).grid(row=3, column=1)
 
-tk.Button(root, text="Add Trade", command=add_trade_gui).pack(pady=5)
+tk.Button(root, text="Add Trade", command=add_trade_gui, bg="#007BFF", fg="white").pack(pady=5)  # Blue button
 
 # Add a dropdown menu to select a specific pair for statistics
-tk.Label(root, text="Select Pair for Statistics:").pack()
+tk.Label(root, text="Select Pair for Statistics:", bg="#2E3B4E", fg="white").pack()
 stats_pair_var = tk.StringVar()
 stats_pair_dropdown = ttk.Combobox(root, textvariable=stats_pair_var, values=["All"] + list(trades_data.keys()))
 stats_pair_dropdown.pack(pady=5)
 
 # Statistics button
-tk.Button(root, text="Show Statistics", command=plot_statistics).pack(pady=10)
+tk.Button(root, text="Show Statistics", command=plot_statistics, bg="#007BFF", fg="white").pack(pady=10)  # Blue button
 
 # View trades button
-tk.Button(root, text="View Trades", command=view_trades_gui).pack(pady=10)
+tk.Button(root, text="View Trades", command=view_trades_gui, bg="#007BFF", fg="white").pack(pady=10)  # Blue button
 
 # Refresh button
-tk.Button(root, text="Refresh", command=refresh_program).pack(pady=10)
+tk.Button(root, text="Refresh", command=refresh_program, bg="#FFC107", fg="white").pack(pady=10)  # Amber button
 
 # Reset button
-tk.Button(root, text="Reset Data", command=reset_data, bg="red", fg="white").pack(pady=10)
+tk.Button(root, text="Reset Data", command=reset_data, bg="#F44336", fg="white").pack(pady=10)  # Red button
 
 update_pair_list()
 root.mainloop()
